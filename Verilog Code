@@ -1,0 +1,140 @@
+`timescale 1ns / 1ps
+
+// Terence Tang
+
+module main (sw, led, clk);
+    input [4:1] sw;
+    input clk;
+    output reg [10:7] led;
+    reg [10:7] next_led;
+    reg [3:0] state = 4'b0000, next_state;
+
+    // Each floor has 3 states: open state, resting state, and closed state.
+    parameter F1_a = 4'b0000, F1_b = 4'b0001, F1_c = 4'b0010;
+    parameter F2_a = 4'b0100, F2_b = 4'b1000, F2_c = 4'b0011;
+    parameter F3_a = 4'b0110, F3_b = 4'b1100, F3_c = 4'b0111;
+
+    always @(state, sw) begin
+        case (state)
+
+            F1_a: begin
+                // The state begins at floor one with the door open,
+                // the next state it can go to is the resting state
+                next_led <= 4'b1001;
+                next_state <= F1_b;
+            end
+
+            F1_b: begin
+                // If switch 4 is high, then the door is open
+                if (sw[4]) begin
+                    next_led <= 4'b1001;
+                    next_state <= F1_b;
+                end else begin
+                    // If not, the door is closed, now it is in the 3rd state
+                    next_led <= 4'b1000;
+                    next_state <= F1_c;
+                end
+            end
+
+            F1_c: begin
+                // User can choose whether to go to floor 2 or 3 from floor 1.
+                if (sw[2]) begin
+                    // Floor 1, closed state. If switch 2 is on, elevator goes to floor 2.
+                    next_led <= 4'b1010;
+                    next_state <= F2_a;
+                end else if (sw[3]) begin
+                    // If switch 3 is on, elevator goes to floor 3 from floor 1.
+                    next_led <= 4'b1011;
+                    next_state <= F3_a;
+                end else begin
+                    // If neither switch is on, the elevator stays closed in floor 1.
+                    next_led <= 4'b1000;
+                    next_state <= F1_c;
+                end
+            end
+
+            F2_a: begin
+                // The user chooses floor 2, door opens, next state is the resting state.
+                next_led <= 4'b1010;
+                next_state <= F2_b;
+            end
+
+            F2_b: begin
+                // If switch 4 is high, the elevator opens the door.
+                if (sw[4]) begin
+                    next_led <= 4'b1010;
+                    next_state <= F2_b;
+                end else begin
+                    // If low, the elevator door on floor 2 is closed.
+                    next_led <= 4'b0100;
+                    next_state <= F2_c;
+                end
+            end
+
+            F2_c: begin
+                // User chooses to go to floor 1 or 3 from floor 2.
+                if (sw[1]) begin
+                    // If switch 1 is high, floor 2 will go to floor 1.
+                    next_led <= 4'b1001;
+                    next_state <= F1_a;
+                end else if (sw[3]) begin
+                    // If switch 3 is high, floor 2 will go to floor 3.
+                    next_led <= 4'b1011;
+                    next_state <= F3_a;
+                end else begin
+                    // If neither, the door will stay closed in floor 2.
+                    next_led <= 4'b0011;
+                    next_state <= F2_c;
+                end
+            end
+
+            F3_a: begin
+                // The elevator is in floor 3, the elevator opens its door to the resting state.
+                next_led <= 4'b0011;
+                next_state <= F3_b;
+            end
+
+            F3_b: begin
+                // If switch 4 is on, the door opens in floor 3.
+                if (sw[4]) begin
+                    next_led <= 4'b0011;
+                    next_state <= F3_b;
+                end else begin
+                    // If not the door closes.
+                    next_led <= 4'b0010;
+                    next_state <= F3_c;
+                end
+            end
+
+            F3_c: begin
+                // User can choose to go to floor 1 or 2 from floor 3.
+                if (sw[1]) begin
+                    // The door is closed on floor 3, switch 1 is high. The elevator goes to floor 1.
+                    next_led <= 4'b1001;
+                    next_state <= F1_a;
+                end else if (sw[2]) begin
+                    // Switch 2 is high, the elevator goes to floor 2.
+                    next_led <= 4'b1010;
+                    next_state <= F2_a;
+                end else begin
+                    // If neither is high, the door stays closed.
+                    next_led <= 4'b0011;
+                    next_state <= F3_c;
+                end
+            end
+
+            default: begin
+                // Elevator is defaulted at floor 1.
+                next_led <= 4'b1001;
+                next_state <= F1_a;
+            end
+
+        endcase
+    end
+
+    always @(posedge clk) begin
+        led <= next_led;
+        state <= next_state;
+    end
+
+endmodule
